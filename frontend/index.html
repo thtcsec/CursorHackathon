@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AirDraw Vision - Web</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="header">
+        <h1>🎨 AirDraw Vision - Web</h1>
+        <div class="status-indicator" id="statusIndicator">
+            <span class="status-dot"></span>
+            <span id="statusText">Not Running</span>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <!-- Left side: Drawing Canvas -->
+        <div class="canvas-section">
+            <h2>Drawing Canvas</h2>
+            <canvas id="drawingCanvas" width="640" height="480"></canvas>
+            
+            <div class="canvas-controls">
+                <button class="btn btn-danger" id="clearCanvasBtn">🗑️ Clear Canvas</button>
+                <button class="btn btn-primary" id="aiAnalyzeBtn">🤖 AI Analyze</button>
+            </div>
+        </div>
+
+        <!-- Right side: Camera Preview -->
+        <div class="camera-section">
+            <h2>Camera Preview</h2>
+            <div class="video-container">
+                <video id="webcam" autoplay playsinline></video>
+                <canvas id="overlayCanvas"></canvas>
+            </div>
+
+            <div class="camera-controls">
+                <button class="btn btn-success" id="startCameraBtn">📹 Start Camera</button>
+                <button class="btn btn-warning" id="stopCameraBtn" disabled>⏹️ Stop Camera</button>
+            </div>
+
+            <!-- Gesture Info -->
+            <div class="info-panel">
+                <h3>Current Gesture</h3>
+                <div class="gesture-display" id="gestureDisplay">
+                    <span class="gesture-icon">✋</span>
+                    <span class="gesture-text">No hand detected</span>
+                </div>
+            </div>
+
+            <!-- Color Info -->
+            <div class="info-panel">
+                <h3>Drawing Color</h3>
+                <div class="color-display">
+                    <div class="color-swatch" id="colorSwatch"></div>
+                    <span class="color-text" id="colorText">RGB(0, 0, 255)</span>
+                </div>
+            </div>
+
+            <!-- Emotion Detection -->
+            <div class="info-panel">
+                <h3>😊 Face Emotion</h3>
+                <div class="emotion-display" id="emotionDisplay">
+                    <span class="emotion-icon" id="emotionIcon">😐</span>
+                    <span class="emotion-text" id="emotionText">Neutral</span>
+                </div>
+            </div>
+
+            <!-- Instructions -->
+            <div class="info-panel instructions">
+                <h3>Gestures</h3>
+                <ul>
+                    <li>☝️ <strong>Index finger up</strong>: Draw</li>
+                    <li>✌️ <strong>Peace sign</strong>: Pause drawing</li>
+                    <li>👍 <strong>Thumb up</strong>: Select color</li>
+                    <li>🖐️ <strong>Open hand (3s)</strong>: Clear canvas</li>
+                    <li>✊ <strong>Closed hand</strong>: Idle</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Color Palette Overlay (shown during thumb-up gesture) -->
+    <div class="color-palette" id="colorPalette">
+        <div class="color-option" data-color="0,0,255" data-rgb="(0,0,255)" style="background: rgb(0,0,255);">Red</div>
+        <div class="color-option" data-color="255,0,0" data-rgb="(255,0,0)" style="background: rgb(255,0,0);">Blue</div>
+        <div class="color-option" data-color="0,255,0" data-rgb="(0,255,0)" style="background: rgb(0,255,0);">Green</div>
+        <div class="color-option" data-color="0,255,255" data-rgb="(0,255,255)" style="background: rgb(0,255,255);">Yellow</div>
+        <div class="color-option" data-color="0,165,255" data-rgb="(0,165,255)" style="background: rgb(0,165,255);">Orange</div>
+        <div class="color-option" data-color="255,0,255" data-rgb="(255,0,255)" style="background: rgb(255,0,255);">Purple</div>
+        <div class="color-option" data-color="255,182,193" data-rgb="(255,182,193)" style="background: rgb(255,182,193);">Pink</div>
+        <div class="color-option" data-color="0,0,0" data-rgb="(0,0,0)" style="background: rgb(0,0,0); color: white;">Black</div>
+    </div>
+
+    <!-- AI Result Modal -->
+    <div class="modal" id="aiResultModal">
+        <div class="modal-content">
+            <span class="close-btn" id="closeModal">&times;</span>
+            <h2>AI Analysis Result</h2>
+            <div id="aiResultContent">
+                <div class="loading" id="loadingSpinner">
+                    <div class="spinner"></div>
+                    <p>Analyzing your drawing...</p>
+                </div>
+                <div id="resultDisplay" style="display: none;">
+                    <h3>Detected Object:</h3>
+                    <p class="detected-object" id="detectedObject"></p>
+                    <h3>Generated Image:</h3>
+                    <img id="generatedImage" alt="Generated illustration">
+                </div>
+                <div id="errorDisplay" style="display: none;">
+                    <p class="error-message" id="errorMessage"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load MediaPipe -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+    
+    <!-- Main App Script -->
+    <script src="app.js"></script>
+</body>
+</html>
+

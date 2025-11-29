@@ -1,0 +1,34 @@
+# HƯỚNG DẪN SETUP NHANH
+
+## 1. Lấy Groq API Key
+- Vào: https://console.groq.com/
+- Đăng ký/Đăng nhập
+- Tạo API Key
+- Copy key
+
+## 2. Tạo file .env trong thư mục backend/
+
+Tạo file tên: .env
+Nội dung:
+
+GROQ_API_KEY=paste-key-cua-ban-vao-day
+
+## 3. Chạy backend
+
+cd backend
+python -m venv venv
+.\venv\Scripts\activate
+pip install -r requirements.txt
+uvicorn main:app --reload
+
+## 4. Chạy frontend (terminal mới)
+
+cd frontend  
+python -m http.server 3000
+
+## 5. Mở browser
+
+http://localhost:3000
+
+DONE! ✅
+
