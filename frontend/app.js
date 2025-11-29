@@ -3,7 +3,7 @@ const BACKEND_URL = 'http://localhost:8000';
 const FINGER_UP_THRESHOLD = 0.1;
 const PEACE_Y_THRESHOLD = 0.05;
 const THUMB_DISTANCE_THRESHOLD = 0.15;
-const CLEAR_HOLD_TIME = 3000; // 3 seconds
+const CLEAR_HOLD_TIME = 2000; // 2 seconds (changed from 3)
 
 // DOM Elements
 const drawingCanvas = document.getElementById('drawingCanvas');
@@ -28,6 +28,7 @@ let lastX = null;
 let lastY = null;
 let currentColor = [0, 0, 255]; // BGR format (Red in OpenCV)
 let currentGesture = 'idle';
+let previousGesture = 'idle'; // Track previous gesture for state changes
 let clearTimer = null;
 let clearStartTime = null;
 let colorPaletteActive = false;
@@ -90,6 +91,22 @@ updateColorDisplay();
 
 // Initialize MediaPipe Hands
 async function initializeMediaPipe() {
+    // Close existing instances first to prevent memory leak
+    if (hands) {
+        try {
+            hands.close();
+        } catch (e) {
+            debugLog('Error closing old hands instance: ' + e.message, 'warning');
+        }
+    }
+    if (faceMesh) {
+        try {
+            faceMesh.close();
+        } catch (e) {
+            debugLog('Error closing old faceMesh instance: ' + e.message, 'warning');
+        }
+    }
+    
     hands = new Hands({
         locateFile: (file) => {
             return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
@@ -178,6 +195,9 @@ function detectGesture(landmarks) {
     // 2. Peace sign - index + middle up
     const indexMiddleYDiff = Math.abs(landmarks[INDEX_TIP].y - landmarks[MIDDLE_TIP].y);
     if (indexUp && middleUp && !ringUp && !pinkyUp && indexMiddleYDiff < 0.08) {
+        if (frameCount % 30 === 0) {
+            debugLog(`✌️ PEACE DETECTED! indexUp=${indexUp} middleUp=${middleUp} ringUp=${ringUp} pinkyUp=${pinkyUp} yDiff=${indexMiddleYDiff.toFixed(3)}`, 'success');
+        }
         return { type: 'peace', indexTip: landmarks[INDEX_TIP] };
     }
 
@@ -253,13 +273,14 @@ function onHandsResults(results) {
 
 // Handle detected gesture with debouncing
 function handleGesture(gesture) {
-    const prevGesture = currentGesture;
-    currentGesture = gesture.type;
+    previousGesture = currentGesture; // Save previous state
     
     // Log gesture changes (throttled)
-    if (prevGesture !== currentGesture && frameCount % 10 === 0) {
-        debugLog(`Gesture: ${prevGesture} → ${currentGesture}`, 'gesture');
+    if (previousGesture !== gesture.type && frameCount % 10 === 0) {
+        debugLog(`Gesture: ${previousGesture} → ${gesture.type}`, 'gesture');
     }
+    
+    currentGesture = gesture.type; // Update current
 
     switch (gesture.type) {
         case 'thumb_up':
@@ -360,9 +381,9 @@ function handleOpenHandGesture() {
     lastY = null;
 }
 
-// Peace sign: Pause drawing
+// Peace sign: Open voice chat!
 function handlePeaceGesture(indexTip) {
-    updateGestureDisplay('✌️', 'Peace Sign - Pause Drawing');
+    updateGestureDisplay('✌️', 'Peace Sign - Opening Voice Chat...');
     
     // Reset clear timer
     resetClearTimer();
@@ -370,6 +391,19 @@ function handlePeaceGesture(indexTip) {
     // Hide color palette
     if (colorPaletteActive) {
         finalizeColorSelection();
+    }
+    
+    // Open voice chat (only trigger once when entering peace gesture)
+    if (previousGesture !== 'peace') {
+        debugLog('🎤 Opening voice chat via peace sign! (prevGesture=' + previousGesture + ')', 'success');
+        document.getElementById('floatingVoiceBtn').click();
+        // Auto-start listening after modal opens
+        setTimeout(() => {
+            if (!isListening && recognition) {
+                startListening();
+                debugLog('Auto-started listening after peace gesture', 'info');
+            }
+        }, 300);
     }
     
     // Stop drawing but show pointer position
@@ -455,63 +489,17 @@ function handleIdleGesture() {
     lastY = null;
 }
 
-// Fist: Dark mode toggle
+// Fist: Removed (peace sign is used for voice chat now)
 function handleFistGesture() {
-    if (isDarkModeTransitioning) {
-        // Skip during transition to prevent flicker
-        return;
-    }
-    
-    if (!darkModeTimer) {
-        darkModeStartTime = Date.now();
-        debugLog('Fist detected - Dark mode timer started', 'gesture');
-        
-        darkModeTimer = setInterval(() => {
-            const elapsed = Date.now() - darkModeStartTime;
-            const remaining = Math.ceil((2000 - elapsed) / 1000);
-            
-            if (remaining > 0) {
-                updateGestureDisplay('✊', `Fist - Dark Mode in ${remaining}s`);
-            } else {
-                // Toggle dark mode
-                isDarkModeTransitioning = true;
-                const wasDark = document.body.classList.contains('dark-mode');
-                document.body.classList.toggle('dark-mode');
-                const isDark = document.body.classList.contains('dark-mode');
-                
-                // Save current canvas content
-                const imageData = drawingCtx.getImageData(0, 0, drawingCanvas.width, drawingCanvas.height);
-                
-                // Change background only
-                const bgColor = isDark ? '#2a2a2a' : 'white';
-                drawingCtx.fillStyle = bgColor;
-                drawingCtx.fillRect(0, 0, drawingCanvas.width, drawingCanvas.height);
-                
-                // Restore drawing on top
-                drawingCtx.putImageData(imageData, 0, 0);
-                
-                debugLog(`Dark mode ${isDark ? 'ON' : 'OFF'}`, 'info');
-                updateGestureDisplay('✅', isDark ? 'Dark Mode ON' : 'Light Mode ON');
-                resetDarkModeTimer();
-                
-                // Reset transition flag after 1 second
-                setTimeout(() => {
-                    isDarkModeTransitioning = false;
-                }, 1000);
-            }
-        }, 100);
-    }
-    
-    // Reset clear timer
+    // Just show idle
+    updateGestureDisplay('✊', 'Fist / Closed Hand - Idle');
     resetClearTimer();
+    resetDarkModeTimer();
     
-    // Hide color palette
     if (colorPaletteActive) {
         finalizeColorSelection();
     }
     
-    // Stop drawing
-    isDrawing = false;
     lastX = null;
     lastY = null;
 }
@@ -581,7 +569,11 @@ function finalizeColorSelection() {
 
 // Camera processing loop - optimized
 async function processCamera() {
-    if (!cameraStarted) return;
+    if (!cameraStarted) {
+        // STOP the loop if camera is not running
+        debugLog('Process camera stopped (cameraStarted = false)', 'info');
+        return;
+    }
     
     frameCount++;
     
@@ -601,8 +593,10 @@ async function processCamera() {
         }
     }
     
-    // No throttling - let browser handle frame rate naturally
-    requestAnimationFrame(processCamera);
+    // Continue loop ONLY if camera is still running
+    if (cameraStarted) {
+        requestAnimationFrame(processCamera);
+    }
 }
 
 // Face emotion detection - improved sensitivity
@@ -732,10 +726,24 @@ document.getElementById('startCameraBtn').addEventListener('click', async () => 
 document.getElementById('stopCameraBtn').addEventListener('click', () => {
     if (cameraStarted) {
         cameraStarted = false;
+        
+        // Stop video stream
         const stream = webcam.srcObject;
-        const tracks = stream.getTracks();
-        tracks.forEach(track => track.stop());
-        webcam.srcObject = null;
+        if (stream) {
+            const tracks = stream.getTracks();
+            tracks.forEach(track => track.stop());
+            webcam.srcObject = null;
+        }
+        
+        // Close MediaPipe instances
+        if (hands) {
+            hands.close();
+            hands = null;
+        }
+        if (faceMesh) {
+            faceMesh.close();
+            faceMesh = null;
+        }
         
         debugLog('Camera stopped', 'info');
         
@@ -748,6 +756,12 @@ document.getElementById('stopCameraBtn').addEventListener('click', () => {
         // Clear overlay
         overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
         updateGestureDisplay('✋', 'No hand detected');
+        
+        // Reset gesture state
+        currentGesture = 'idle';
+        previousGesture = 'idle';
+        lastX = null;
+        lastY = null;
     }
 });
 
@@ -814,6 +828,15 @@ document.querySelectorAll('[data-effect]').forEach(btn => {
 
 // AI Finish Sketch button
 document.getElementById('aiFinishBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('aiFinishBtn');
+    const originalText = btn.textContent;
+    
+    // Disable button and show loading
+    btn.disabled = true;
+    btn.textContent = '⏳ Finishing...';
+    btn.style.opacity = '0.6';
+    btn.style.cursor = 'not-allowed';
+    
     aiResultModal.classList.add('show');
     document.getElementById('loadingSpinner').style.display = 'block';
     document.getElementById('resultDisplay').style.display = 'none';
@@ -847,6 +870,15 @@ document.getElementById('aiFinishBtn').addEventListener('click', async () => {
 
 // AI Ghost Guide button - OVERLAY MODE!
 document.getElementById('aiGhostBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('aiGhostBtn');
+    const originalText = btn.textContent;
+    
+    // Disable button and show loading
+    btn.disabled = true;
+    btn.textContent = '⏳ Ghost Guide...';
+    btn.style.opacity = '0.6';
+    btn.style.cursor = 'not-allowed';
+    
     debugLog('Ghost Guide: Starting...', 'info');
     
     try {
@@ -855,7 +887,8 @@ document.getElementById('aiGhostBtn').addEventListener('click', async () => {
         formData.append('image', blob, 'drawing.png');
         
         statusIndicator.classList.add('processing');
-        statusText.textContent = 'AI Creating Ghost Guide...';
+        statusText.textContent = 'Step 1/3: AI analyzing...';
+        debugLog('Ghost Guide: Analyzing drawing...', 'info');
         
         const response = await fetch(`${BACKEND_URL}/ghost-guide`, {
             method: 'POST',
@@ -866,7 +899,13 @@ document.getElementById('aiGhostBtn').addEventListener('click', async () => {
             throw new Error(`Server error: ${response.status}`);
         }
         
+        statusText.textContent = 'Step 2/3: Generating guide...';
+        debugLog('Ghost Guide: Waiting for image generation...', 'info');
+        
         const result = await response.json();
+        
+        statusText.textContent = 'Step 3/3: Loading ghost...';
+        debugLog('Ghost Guide: Loading image...', 'info');
         
         // Load ghost image
         ghostImage = new Image();
@@ -889,7 +928,7 @@ document.getElementById('aiGhostBtn').addEventListener('click', async () => {
             drawingCtx.drawImage(ghostImage, x, y, ghostImage.width * scale, ghostImage.height * scale);
             drawingCtx.restore();
             
-            debugLog('Ghost rendered on canvas! Draw over it!', 'info');
+            debugLog('✅ Ghost rendered! Draw over it!', 'info');
             
             // Speak witty message
             const wittyMessages = [
@@ -904,6 +943,7 @@ document.getElementById('aiGhostBtn').addEventListener('click', async () => {
         };
         ghostImage.onerror = () => {
             debugLog('Ghost Guide: Image load failed, retrying...', 'error');
+            statusText.textContent = 'Retrying image load...';
             setTimeout(() => {
                 ghostImage.src = result.image_url + '&t=' + Date.now();
             }, 1000);
@@ -915,6 +955,12 @@ document.getElementById('aiGhostBtn').addEventListener('click', async () => {
         alert('Ghost Guide failed. Backend running?');
         statusText.textContent = 'Error';
         statusIndicator.classList.remove('processing');
+    } finally {
+        // Re-enable button
+        btn.disabled = false;
+        btn.textContent = originalText;
+        btn.style.opacity = '1';
+        btn.style.cursor = 'pointer';
     }
 });
         const imgElement = document.getElementById('generatedImage');
@@ -939,11 +985,26 @@ document.getElementById('aiGhostBtn').addEventListener('click', async () => {
         } else {
             statusText.textContent = 'Not Running';
         }
+        
+        // Re-enable button
+        btn.disabled = false;
+        btn.textContent = originalText;
+        btn.style.opacity = '1';
+        btn.style.cursor = 'pointer';
     }
 });
 
 // AI Analyze button
 document.getElementById('aiAnalyzeBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('aiAnalyzeBtn');
+    const originalText = btn.textContent;
+    
+    // Disable button and show loading
+    btn.disabled = true;
+    btn.textContent = '⏳ Analyzing...';
+    btn.style.opacity = '0.6';
+    btn.style.cursor = 'not-allowed';
+    
     // Show modal
     aiResultModal.classList.add('show');
     document.getElementById('loadingSpinner').style.display = 'block';
@@ -1005,6 +1066,12 @@ document.getElementById('aiAnalyzeBtn').addEventListener('click', async () => {
         } else {
             statusText.textContent = 'Not Running';
         }
+        
+        // Re-enable button
+        btn.disabled = false;
+        btn.textContent = originalText;
+        btn.style.opacity = '1';
+        btn.style.cursor = 'pointer';
     }
 });
 
@@ -1085,25 +1152,27 @@ if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
         // Check for voice commands first
         const command = transcript.toLowerCase().trim();
         
-        // Voice commands handling - BETTER DETECTION & REAL EXECUTION
-        if (command.includes('start') || command.includes('open') || command.includes('turn on') || 
-            command.includes('camera') || command.includes('begin') || command.includes('bắt đầu')) {
-            // More flexible: "start camera", "open", "camera", "turn on", etc
-            if (command.includes('camera') || command.includes('start') || command.includes('open') || command.includes('bắt đầu')) {
-                voiceResponse.textContent = 'AI: Opening camera for you!';
-                document.getElementById('startCameraBtn').click(); // This works!
-                speakText('Opening camera for you!');
-                debugLog('Voice command: Starting camera', 'info');
-                return;
-            }
-        }
+        // Voice commands handling - CHECK STOP/CLOSE FIRST (priority)
         
+        // 1. STOP/CLOSE commands (HIGHEST PRIORITY)
         if (command.includes('stop') || command.includes('close') || command.includes('turn off') || command.includes('dừng')) {
             if (command.includes('camera')) {
                 voiceResponse.textContent = 'AI: Stopping camera!';
                 document.getElementById('stopCameraBtn').click();
                 speakText('Stopping camera!');
                 debugLog('Voice command: Stopping camera', 'info');
+                return;
+            }
+        }
+        
+        // 2. START/OPEN commands
+        if (command.includes('start') || command.includes('open') || command.includes('turn on') || 
+            command.includes('begin') || command.includes('bắt đầu')) {
+            if (command.includes('camera')) {
+                voiceResponse.textContent = 'AI: Opening camera for you!';
+                document.getElementById('startCameraBtn').click();
+                speakText('Opening camera for you!');
+                debugLog('Voice command: Starting camera', 'info');
                 return;
             }
         }
@@ -1128,6 +1197,15 @@ if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
             document.getElementById('aiAnalyzeBtn').click();
             speakText('Let me analyze your drawing');
             debugLog('Voice command: Analyzing drawing', 'info');
+            return;
+        }
+        
+        // What do you see / look at my drawing - Screen Analyze with vision!
+        if (command.includes('what do you see') || command.includes('look at') || 
+            command.includes('see my drawing') || command.includes('xem tao vẽ')) {
+            voiceResponse.textContent = 'AI: Let me look at your canvas...';
+            document.getElementById('screenCaptureBtn').click();
+            debugLog('Voice command: Screen analyze (vision)', 'info');
             return;
         }
         
@@ -1250,6 +1328,15 @@ voiceBtn.addEventListener('click', () => {
 
 // Screen capture button - AI sees ONLY drawing + emotion!
 document.getElementById('screenCaptureBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('screenCaptureBtn');
+    const originalTitle = btn.title;
+    
+    // Disable button and show loading
+    btn.disabled = true;
+    btn.style.opacity = '0.6';
+    btn.style.cursor = 'not-allowed';
+    btn.title = 'Analyzing...';
+    
     try {
         voiceOrb.classList.add('speaking');
         voiceStatus.textContent = 'AI analyzing your drawing...';
@@ -1317,6 +1404,12 @@ document.getElementById('screenCaptureBtn').addEventListener('click', async () =
         voiceOrb.classList.remove('speaking');
         voiceStatus.textContent = 'Error';
         speakText('Sorry, I had trouble analyzing your drawing.');
+    } finally {
+        // Re-enable button
+        btn.disabled = false;
+        btn.style.opacity = '1';
+        btn.style.cursor = 'pointer';
+        btn.title = originalTitle;
     }
 });
 

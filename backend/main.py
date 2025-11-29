@@ -305,14 +305,14 @@ async def analyze_screen(image: UploadFile = File(...)):
                     "mime_type": "image/png",
                     "data": image_data
                 },
-                "What did the person draw on this canvas? Describe in 1 sentence what you see. Be specific and accurate. Examples: 'I see a heart shape', 'I see a house with a sun', 'I see a smiley face'."
+                "Look at this drawing canvas. If you see ANY drawings/shapes/lines, describe them accurately in 1 sentence. If the canvas is BLANK/EMPTY, just say 'The canvas is empty'. Be honest and specific. Examples: 'I see a red heart', 'I see a house', 'The canvas is empty', 'I see some blue lines'."
             ])
             
             response_text = result.text.strip()
             
         except Exception as e:
             print(f"Gemini API error: {e}")
-            response_text = "I'm having trouble analyzing the drawing right now. Keep creating!"
+            response_text = "I'm having trouble seeing the canvas right now."
         
         return JSONResponse({
             "status": "success",
