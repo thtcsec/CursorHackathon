@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AirDraw Vision - Web</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -22,8 +23,16 @@
             <canvas id="drawingCanvas" width="640" height="480"></canvas>
             
             <div class="canvas-controls">
-                <button class="btn btn-danger" id="clearCanvasBtn">🗑️ Clear Canvas</button>
-                <button class="btn btn-primary" id="aiAnalyzeBtn">🤖 AI Analyze</button>
+                <button class="btn btn-danger" id="clearCanvasBtn">Clear Canvas</button>
+                <button class="btn btn-primary" id="aiAnalyzeBtn">AI Analyze</button>
+                <button class="btn btn-primary" id="aiFinishBtn">AI Finish Sketch</button>
+                <button class="btn btn-success" id="saveBtn">Save Drawing</button>
+            </div>
+
+            <div class="effect-controls" style="margin-top: 10px;">
+                <button class="btn btn-secondary btn-sm active" id="normalEffect" data-effect="normal">Normal</button>
+                <button class="btn btn-secondary btn-sm" id="rainbowEffect" data-effect="rainbow">Rainbow</button>
+                <button class="btn btn-secondary btn-sm" id="neonEffect" data-effect="neon">Neon</button>
             </div>
         </div>
 
@@ -76,10 +85,48 @@
                     <li>👍 <strong>Thumb up</strong>: Select color</li>
                     <li>🖐️ <strong>Open hand (3s)</strong>: Clear canvas</li>
                     <li>✊ <strong>Closed hand</strong>: Idle</li>
+                    <li>✊ <strong>Fist (hold 2s)</strong>: Toggle Dark Mode</li>
                 </ul>
+            </div>
+
+            <!-- Debug Console -->
+            <div class="info-panel debug-console">
+                <h3>Debug Log <button class="btn-mini" id="clearDebug">Clear</button></h3>
+                <div class="debug-output" id="debugOutput"></div>
             </div>
         </div>
     </div>
+
+    <footer style="text-align: center; padding: 20px; margin-top: 30px; color: rgba(255,255,255,0.7);">
+        Built by Trinh Hoang Tu
+    </footer>
+
+    <!-- Voice Chat Modal (Gemini-style) -->
+    <div class="voice-modal" id="voiceModal">
+        <div class="voice-modal-content">
+            <button class="voice-close" id="closeVoiceModal">&times;</button>
+            <div class="voice-orb-container">
+                <div class="voice-orb" id="voiceOrb">
+                    <div class="orb-inner"></div>
+                    <div class="orb-glow"></div>
+                </div>
+            </div>
+            <div class="voice-status" id="voiceStatus">Tap to speak</div>
+            <button class="voice-btn" id="voiceBtn">
+                <span class="mic-icon">🎤</span>
+            </button>
+            <button class="voice-btn" id="screenCaptureBtn" title="Capture screen + Ask AI">
+                <span class="camera-icon">📸</span>
+            </button>
+            <div class="voice-transcript" id="voiceTranscript"></div>
+            <div class="voice-response" id="voiceResponse"></div>
+        </div>
+    </div>
+
+    <!-- Voice Toggle Button -->
+    <button class="floating-voice-btn" id="floatingVoiceBtn" title="Voice Chat with AI">
+        🎤
+    </button>
 
     <!-- Color Palette Overlay (shown during thumb-up gesture) -->
     <div class="color-palette" id="colorPalette">

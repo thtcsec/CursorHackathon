@@ -1,4 +1,4 @@
-# HƯỚNG DẪN SETUP NHANH
+# HƯỚNG DẪN SETUP NHANH - AIRDRAW VISION
 
 ## 1. Lấy Groq API Key
 - Vào: https://console.groq.com/
@@ -30,5 +30,16 @@ python -m http.server 3000
 
 http://localhost:3000
 
-DONE! ✅
+## TÍNH NĂNG MỚI:
+- AI Finish Sketch (hoàn thiện tranh tự động!)
+- Auto Emoji Reaction (cười/buồn → emoji xuất hiện)
+- Rainbow & Neon trail effects
+- Save to Media Folder (auto-save + download)
+- Dark Mode (gesture: nắm chặt tay 2s)
+- Debug Console (log realtime)
+- Single Hand Optimized (SMOOTH!)
+- 🎤 VOICE CHAT WITH AI (Gemini-style orb!)
 
+Built by Trinh Hoang Tu
+
+DONE!
