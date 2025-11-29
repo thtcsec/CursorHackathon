@@ -32,9 +32,12 @@ let clearTimer = null;
 let clearStartTime = null;
 let colorPaletteActive = false;
 let hoveredColorIndex = -1;
+let ghostImage = null; // AI ghost guide overlay
+let ghostOpacity = 0.4; // 40% opacity for ghost guide
 let lastThumbY = 0;
 let trailEffect = 'normal'; // normal, rainbow, neon
 let lastEmotion = 'neutral';
+let currentEmotion = 'Neutral'; // Global emotion state
 let emojiReactionTimeout = null;
 let darkModeTimer = null;
 let darkModeStartTime = null;
@@ -159,8 +162,11 @@ function detectGesture(landmarks) {
     const wrist = landmarks[WRIST];
     const thumbDistance = calculateDistance(thumbTip, indexTip);
     
-    // Thumb up: thumb far from other fingers and above wrist significantly
-    const thumbUp = thumbTip.y < wrist.y - 0.15 && thumbDistance > 0.15 && fingersUp === 0;
+    // Thumb up: thumb VERY far from other fingers, clearly above wrist, ALL other fingers DOWN
+    const thumbUp = thumbTip.y < wrist.y - 0.18 && // Higher threshold
+                    thumbDistance > 0.18 && // Farther distance
+                    fingersUp === 0 && // ALL other fingers must be down
+                    !indexUp; // Explicitly check index is NOT up
 
     // PRIORITY ORDER (FIXED):
     
@@ -185,11 +191,14 @@ function detectGesture(landmarks) {
         return { type: 'thumb_up', thumbY: thumbTip.y };
     }
 
-    // 5. Fist (for dark mode) - all fingers clearly down AND hand present
+    // 5. Fist (for dark mode) - STRICT DETECTION to avoid conflicts
     if (fingersUp === 0 && !thumbUp) {
-        // Check if hand is actually closed (not just idle)
+        // Hand must be VERY compact AND thumb must be tucked in
         const handSize = calculateDistance(landmarks[WRIST], landmarks[MIDDLE_TIP]);
-        if (handSize < 0.2) { // Hand is compact/closed
+        const thumbToWrist = calculateDistance(landmarks[THUMB_TIP], landmarks[WRIST]);
+        
+        // Very strict: hand small AND thumb close to palm
+        if (handSize < 0.18 && thumbToWrist < 0.15) {
             return { type: 'fist' };
         }
     }
@@ -603,6 +612,7 @@ function onFaceMeshResults(results) {
         if (document.getElementById('emotionText').textContent !== 'Neutral') {
             document.getElementById('emotionIcon').textContent = '😐';
             document.getElementById('emotionText').textContent = 'Neutral';
+            currentEmotion = 'Neutral'; // Update global
         }
         return;
     }
@@ -652,6 +662,7 @@ function onFaceMeshResults(results) {
     
     document.getElementById('emotionIcon').textContent = icon;
     document.getElementById('emotionText').textContent = emotion;
+    currentEmotion = emotion; // Update global variable
     
     // Auto-Emoji Reaction with debounce
     if (emotion !== lastEmotion && emotion !== 'Neutral' && !emojiReactionTimeout) {
@@ -745,6 +756,7 @@ document.getElementById('clearCanvasBtn').addEventListener('click', () => {
     const bgColor = document.body.classList.contains('dark-mode') ? '#2a2a2a' : 'white';
     drawingCtx.fillStyle = bgColor;
     drawingCtx.fillRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+    ghostImage = null; // Clear ghost guide too
     debugLog('Canvas cleared manually', 'info');
 });
 
@@ -832,6 +844,79 @@ document.getElementById('aiFinishBtn').addEventListener('click', async () => {
         document.getElementById('detectedObject').textContent = 'FINISHED SKETCH';
         
         // Load generated image with error handling
+
+// AI Ghost Guide button - OVERLAY MODE!
+document.getElementById('aiGhostBtn').addEventListener('click', async () => {
+    debugLog('Ghost Guide: Starting...', 'info');
+    
+    try {
+        const blob = await new Promise(resolve => drawingCanvas.toBlob(resolve, 'image/png'));
+        const formData = new FormData();
+        formData.append('image', blob, 'drawing.png');
+        
+        statusIndicator.classList.add('processing');
+        statusText.textContent = 'AI Creating Ghost Guide...';
+        
+        const response = await fetch(`${BACKEND_URL}/ghost-guide`, {
+            method: 'POST',
+            body: formData
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Server error: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        
+        // Load ghost image
+        ghostImage = new Image();
+        ghostImage.crossOrigin = 'anonymous';
+        ghostImage.onload = () => {
+            debugLog(`Ghost Guide loaded: ${result.description}`, 'info');
+            statusText.textContent = 'Running';
+            statusIndicator.classList.remove('processing');
+            statusIndicator.classList.add('running');
+            
+            // Render ghost ONCE as background
+            drawingCtx.save();
+            drawingCtx.globalAlpha = ghostOpacity;
+            const scale = Math.min(
+                drawingCanvas.width / ghostImage.width,
+                drawingCanvas.height / ghostImage.height
+            );
+            const x = (drawingCanvas.width - ghostImage.width * scale) / 2;
+            const y = (drawingCanvas.height - ghostImage.height * scale) / 2;
+            drawingCtx.drawImage(ghostImage, x, y, ghostImage.width * scale, ghostImage.height * scale);
+            drawingCtx.restore();
+            
+            debugLog('Ghost rendered on canvas! Draw over it!', 'info');
+            
+            // Speak witty message
+            const wittyMessages = [
+                `Here's a pro version! Try to trace it if you dare!`,
+                `Ghost mode activated! Can you follow my lines?`,
+                `I made it pretty. Your turn to copy!`,
+                `Behold! The AI's masterpiece. Now trace it!`,
+                `Follow the ghost... if you can keep up!`
+            ];
+            const randomMsg = wittyMessages[Math.floor(Math.random() * wittyMessages.length)];
+            speakText(randomMsg);
+        };
+        ghostImage.onerror = () => {
+            debugLog('Ghost Guide: Image load failed, retrying...', 'error');
+            setTimeout(() => {
+                ghostImage.src = result.image_url + '&t=' + Date.now();
+            }, 1000);
+        };
+        ghostImage.src = result.image_url;
+        
+    } catch (error) {
+        debugLog(`Ghost Guide error: ${error.message}`, 'error');
+        alert('Ghost Guide failed. Backend running?');
+        statusText.textContent = 'Error';
+        statusIndicator.classList.remove('processing');
+    }
+});
         const imgElement = document.getElementById('generatedImage');
         imgElement.onerror = () => {
             debugLog('Image load failed, retrying...', 'error');
@@ -1042,6 +1127,16 @@ if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
             voiceResponse.textContent = 'AI: Analyzing your drawing...';
             document.getElementById('aiAnalyzeBtn').click();
             speakText('Let me analyze your drawing');
+            debugLog('Voice command: Analyzing drawing', 'info');
+            return;
+        }
+        
+        // Enhanced this picture / ghost guide
+        if (command.includes('enhance') || command.includes('ghost') || command.includes('guide') || 
+            command.includes('improve') || command.includes('make it better')) {
+            voiceResponse.textContent = 'AI: Creating ghost guide...';
+            document.getElementById('aiGhostBtn').click();
+            debugLog('Voice command: Ghost guide activated', 'info');
             return;
         }
         
@@ -1157,10 +1252,10 @@ voiceBtn.addEventListener('click', () => {
 document.getElementById('screenCaptureBtn').addEventListener('click', async () => {
     try {
         voiceOrb.classList.add('speaking');
-        voiceStatus.textContent = 'Capturing drawing...';
-        voiceTranscript.textContent = 'You: 📸 What do you see in my drawing?';
+        voiceStatus.textContent = 'AI analyzing your drawing...';
+        voiceTranscript.textContent = 'You: 👁️ What did I draw?';
         
-        debugLog('Screen capture: Starting...', 'info');
+        debugLog('AI Vision: Analyzing with Gemini...', 'info');
         
         // Create a composite canvas - ONLY DRAWING + TEXT
         const compositeCanvas = document.createElement('canvas');

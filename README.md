@@ -25,6 +25,7 @@
 ### 🤖 AI Features
 - **AI Analyze**: Nhận diện vật thể trong bức vẽ (dùng Groq Vision)
 - **AI Finish Sketch**: Tự động hoàn thiện bản vẽ thành tác phẩm chuyên nghiệp (MAGIC!)
+- **👻 AI Ghost Guide** (NEW!): AI tạo bản vẽ đẹp overlay 40% opacity lên canvas → Bạn vẽ đè theo như tracing! (BEST for Hackathon Demo!)
 - Tự động tạo hình minh họa từ Pollinations AI
 
 ### 💾 Tiện Ích
@@ -52,13 +53,25 @@ python -m venv venv
 pip install -r requirements.txt
 ```
 
-### Bước 2: Setup Groq API Key
+### Bước 2: Setup API Keys
 
-1. Lấy API key tại: https://console.groq.com/
-2. Tạo file `.env` trong thư mục `backend/`:
+**Cần 2 API keys:**
+
+1. **Groq API Key** (cho voice chat):
+   - Vào: https://console.groq.com/
+   - Đăng ký/Đăng nhập
+   - Tạo API Key
+
+2. **Gemini API Key** (cho vision - QUAN TRỌNG!):
+   - Vào: https://aistudio.google.com/app/apikey
+   - Đăng nhập Google
+   - Tạo API Key
+
+3. Tạo file `.env` trong thư mục `backend/`:
 
 ```
 GROQ_API_KEY=your-groq-api-key-here
+GEMINI_API_KEY=your-gemini-api-key-here
 ```
 
 ### Bước 3: Chạy Ứng Dụng
@@ -110,7 +123,11 @@ Truy cập: http://localhost:3000
 
 - **Backend**:
   - FastAPI (Python)
-  - Groq API (Vision: llama-3.2-11b-vision-preview, Chat: llama-3.3-70b-versatile)
+  - **HYBRID AI System:**
+    - **Groq** (`llama-3.3-70b-versatile`): Voice chat (text-only) 🎤
+    - **Gemini** (`gemini-2.0-flash-exp`): ALL vision features (AI Analyze, AI Finish, Ghost Guide, Screen Analyze) 👁️
+  - Pollinations AI: Image generation
+  - ⚠️ **IMPORTANT**: Cần CẢ 2 API keys (Groq + Gemini) để app hoạt động đầy đủ!
   - Pollinations API (tạo hình ảnh)
 
 ## 📁 Cấu Trúc Project
@@ -208,10 +225,15 @@ Nắm chặt tay 2 giây → chuyển chế độ tối. Native gesture control!
 
 ### 🎤 Voice Chat with AI (NEW!)
 - Gemini-style animated orb
-- Speech-to-Text → Groq AI → Text-to-Speech (1.3x speed - faster!)
-- Nói chuyện tự nhiên với AI về bất cứ thứ gì!
-- 📸 **Screen Capture**: AI có thể XEM màn hình và nói về tranh của bạn!
-- 🎙️ **Voice Commands**: Ra lệnh điều khiển app bằng giọng nói!
+- Speech-to-Text → Groq AI → Text-to-Speech (1.6x speed - fast!)
+- AI nói chuyện **DÍ DỎM, NGẮN GỌN** (không luyên thuyên!)
+- 💬 **AI Encourage**: Creative feedback mode - AI động viên bạn vẽ tiếp! (Text-only, luôn positive!)
+- 🎙️ **Voice Commands**: 
+  - "start camera" / "camera" → Bật camera
+  - "clear" → Xóa canvas
+  - "save" → Lưu tranh
+  - "**enhance this picture**" → Kích hoạt AI Ghost Guide! 👻
+  - "analyze" → Phân tích tranh
   - "Start camera" / "Open camera"
   - "Stop camera" / "Close camera"
   - "Clear canvas" / "Erase everything"

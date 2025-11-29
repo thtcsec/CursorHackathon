@@ -1,8 +1,16 @@
 # HƯỚNG DẪN SETUP NHANH - AIRDRAW VISION
 
-## 1. Lấy Groq API Key
+## 1. Lấy API Keys (CẦN 2 KEYS!)
+
+### Groq API Key (cho voice chat):
 - Vào: https://console.groq.com/
 - Đăng ký/Đăng nhập
+- Tạo API Key
+- Copy key
+
+### Gemini API Key (cho vision - QUAN TRỌNG!):
+- Vào: https://aistudio.google.com/app/apikey
+- Đăng nhập Google
 - Tạo API Key
 - Copy key
 
@@ -11,7 +19,8 @@
 Tạo file tên: .env
 Nội dung:
 
-GROQ_API_KEY=paste-key-cua-ban-vao-day
+GROQ_API_KEY=paste-groq-key-cua-ban-vao-day
+GEMINI_API_KEY=paste-gemini-key-cua-ban-vao-day
 
 ## 3. Chạy backend
 
@@ -31,6 +40,7 @@ python -m http.server 3000
 http://localhost:3000
 
 ## TÍNH NĂNG MỚI:
+- 👻 AI GHOST GUIDE (voice: "enhance this picture") - BEST for Demo!
 - AI Finish Sketch (hoàn thiện tranh tự động!)
 - Auto Emoji Reaction (cười/buồn → emoji xuất hiện)
 - Rainbow & Neon trail effects
@@ -38,7 +48,10 @@ http://localhost:3000
 - Dark Mode (gesture: nắm chặt tay 2s)
 - Debug Console (log realtime)
 - Single Hand Optimized (SMOOTH!)
-- 🎤 VOICE CHAT WITH AI (Gemini-style orb!)
+- 🎤 VOICE CHAT WITH AI (witty, concise, 1.6x speed!)
+- 🎯 HYBRID AI SYSTEM:
+  - Groq: Voice chat (text)
+  - Gemini: ALL vision (CHÍNH XÁC!)
 
 Built by Trinh Hoang Tu
 

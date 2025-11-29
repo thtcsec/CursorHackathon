@@ -9,13 +9,14 @@ from io import BytesIO
 from PIL import Image
 import requests
 from groq import Groq
+import google.generativeai as genai  # ADD GEMINI
 from datetime import datetime
 
 # Load environment variables from .env file
 load_dotenv()
 
 # Initialize FastAPI app
-app = FastAPI(title="AirDraw Vision API")
+app = FastAPI(title="AirDraw Vision API - HYBRID MODE")
 
 # Create media folder if not exists
 MEDIA_FOLDER = os.path.join(os.path.dirname(__file__), "..", "media")
@@ -33,13 +34,26 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize Groq client
+# Initialize Groq client (for text chat)
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 if not GROQ_API_KEY:
     raise RuntimeError("❌ GROQ_API_KEY không được set trong file .env!")
 
 print(f"✅ Groq API Key loaded: {GROQ_API_KEY[:10]}...")
 groq_client = Groq(api_key=GROQ_API_KEY)
+
+# Initialize Gemini (for VISION - more accurate!)
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
+    gemini_vision = genai.GenerativeModel("gemini-2.5-flash")
+    print(f"Gemini Vision API loaded: {GEMINI_API_KEY[:10]}...")
+    print("🎯 HYBRID MODE: Groq for text, Gemini for vision!")
+else:
+    gemini_vision = None
+    print("⚠️  WARNING: GEMINI_API_KEY not set!")
+    print("⚠️  Vision features will NOT work properly!")
+    print("⚠️  Get key at: https://aistudio.google.com/app/apikey")
 
 @app.get("/")
 async def root():
@@ -48,67 +62,46 @@ async def root():
 @app.post("/analyze-drawing")
 async def analyze_drawing(image: UploadFile = File(...)):
     """
-    Analyze a drawing image using Groq's vision model and generate an illustration
+    Analyze a drawing image using GEMINI VISION (accurate!)
     """
     try:
         # Read the uploaded image
         image_data = await image.read()
         
-        # Open and convert image
-        pil_image = Image.open(BytesIO(image_data))
+        if not gemini_vision:
+            return JSONResponse({
+                "description": "unknown",
+                "image_url": "https://image.pollinations.ai/prompt/abstract%20art?width=512&height=512&nologo=true",
+                "status": "error",
+                "message": "Gemini API key not configured"
+            })
         
-        # Convert to RGB if needed
-        if pil_image.mode != 'RGB':
-            pil_image = pil_image.convert('RGB')
-        
-        # Convert to base64 for Groq API
-        buffered = BytesIO()
-        pil_image.save(buffered, format="PNG")
-        img_base64 = base64.b64encode(buffered.getvalue()).decode('utf-8')
-        
-        # Analyze with Groq using vision model
-        # Note: Using llama-3.2-11b-vision-preview (90b deprecated)
+        # Use GEMINI for vision (like GPT's code!)
         try:
-            chat_completion = groq_client.chat.completions.create(
-                messages=[
-                    {
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "text",
-                                "text": "Analyze this drawing and describe the main object in 2-3 words in English. Only respond with the object name, for example: 'sun', 'house', 'tree', 'car', 'flower'. Be concise."
-                            },
-                            {
-                                "type": "image_url",
-                                "image_url": {
-                                    "url": f"data:image/png;base64,{img_base64}"
-                                }
-                            }
-                        ]
-                    }
-                ],
-                model="llama-3.2-11b-vision-preview",
-                temperature=0.3,
-                max_tokens=50
-            )
+            result = gemini_vision.generate_content([
+                {
+                    "mime_type": "image/png",
+                    "data": image_data  # RAW BYTES - no base64 needed!
+                },
+                "Analyze this drawing and describe the main object in 2-3 words in English. Only respond with the object name, for example: 'sun', 'house', 'tree', 'car', 'flower'. Be concise."
+            ])
             
-            # Extract description
-            description = chat_completion.choices[0].message.content.strip()
-            description = description.lower().strip('."\'')
+            description = result.text.strip().lower().strip('."\'')
             
-            # Clean up description (remove extra words if any)
+            # Clean up
             words = description.split()
             if len(words) > 3:
                 description = ' '.join(words[:3])
             
         except Exception as e:
-            print(f"Groq API error: {e}")
-            # Fallback description
+            print(f"Gemini API error: {e}")
             description = "drawing"
         
-        # Generate illustrative image using Pollinations API
+        # Generate illustrative image with cache busting
+        import random
+        seed = random.randint(1000000, 9999999)
         encoded_prompt = requests.utils.quote(f"professional illustration of {description}, clean simple style, white background")
-        image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=512&height=512&nologo=true&enhance=true"
+        image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=512&height=512&nologo=true&enhance=true&seed={seed}"
         
         return JSONResponse({
             "description": description,
@@ -123,63 +116,44 @@ async def analyze_drawing(image: UploadFile = File(...)):
 @app.post("/finish-drawing")
 async def finish_drawing(image: UploadFile = File(...)):
     """
-    Finish a sketch drawing with AI - autocomplete style
+    Finish a sketch drawing with AI - GEMINI VISION
     """
     try:
         # Read the uploaded image
         image_data = await image.read()
         
-        # Open and convert image
-        pil_image = Image.open(BytesIO(image_data))
+        if not gemini_vision:
+            return JSONResponse({
+                "description": "creative artwork",
+                "image_url": "https://image.pollinations.ai/prompt/abstract%20art?width=512&height=512&nologo=true",
+                "status": "error"
+            })
         
-        # Convert to RGB if needed
-        if pil_image.mode != 'RGB':
-            pil_image = pil_image.convert('RGB')
-        
-        # Convert to base64 for Groq API
-        buffered = BytesIO()
-        pil_image.save(buffered, format="PNG")
-        img_base64 = base64.b64encode(buffered.getvalue()).decode('utf-8')
-        
-        # Analyze with Groq
+        # Analyze with GEMINI
         try:
-            chat_completion = groq_client.chat.completions.create(
-                messages=[
-                    {
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "text",
-                                "text": "Analyze this sketch and describe what the user is trying to draw in 2-3 words. Example: 'sunset landscape', 'cute cat', 'modern car'. Be creative and specific."
-                            },
-                            {
-                                "type": "image_url",
-                                "image_url": {
-                                    "url": f"data:image/png;base64,{img_base64}"
-                                }
-                            }
-                        ]
-                    }
-                ],
-                model="llama-3.2-11b-vision-preview",
-                temperature=0.5,
-                max_tokens=30
-            )
+            result = gemini_vision.generate_content([
+                {
+                    "mime_type": "image/png",
+                    "data": image_data
+                },
+                "Analyze this sketch and describe what the user is trying to draw in 2-3 words. Example: 'sunset landscape', 'cute cat', 'modern car'. Be creative and specific."
+            ])
             
-            description = chat_completion.choices[0].message.content.strip()
-            description = description.lower().strip('."\'')
+            description = result.text.strip().lower().strip('."\'')
             
         except Exception as e:
-            print(f"Groq API error: {e}")
+            print(f"Gemini API error: {e}")
             description = "creative artwork"
         
-        # Generate finished illustration - more detailed prompt
+        # Generate finished illustration with cache busting
+        import random
+        seed = random.randint(1000000, 9999999)
         encoded_prompt = requests.utils.quote(
             f"high quality professional illustration of {description}, "
             f"fully rendered, detailed artwork, vibrant colors, "
             f"digital art style, clean composition"
         )
-        image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=512&height=512&nologo=true&enhance=true"
+        image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=512&height=512&nologo=true&enhance=true&seed={seed}"
         
         return JSONResponse({
             "description": description,
@@ -195,6 +169,59 @@ async def finish_drawing(image: UploadFile = File(...)):
 async def health_check():
     """Health check endpoint"""
     return {"status": "healthy", "groq_api_configured": bool(GROQ_API_KEY)}
+
+@app.post("/ghost-guide")
+async def ghost_guide(image: UploadFile = File(...)):
+    """
+    Generate AI ghost guide overlay - GEMINI VISION
+    """
+    try:
+        # Read the uploaded image
+        image_data = await image.read()
+        
+        if not gemini_vision:
+            return JSONResponse({
+                "description": "enhanced sketch",
+                "image_url": "https://image.pollinations.ai/prompt/line%20art%20sketch?width=512&height=512&nologo=true",
+                "status": "error"
+            })
+        
+        # Analyze with GEMINI
+        try:
+            result = gemini_vision.generate_content([
+                {
+                    "mime_type": "image/png",
+                    "data": image_data
+                },
+                "What is this sketch trying to be? Reply in 2-3 words max. Examples: 'cute cat', 'sunset scene', 'happy face', 'house'."
+            ])
+            
+            description = result.text.strip().lower().strip('."\'')
+            
+        except Exception as e:
+            print(f"Gemini API error: {e}")
+            description = "enhanced sketch"
+        
+        # Generate enhanced version as ghost guide with cache busting
+        import random
+        seed = random.randint(1000000, 9999999)
+        encoded_prompt = requests.utils.quote(
+            f"simple clean line art sketch of {description}, "
+            f"black lines on white background, minimal details, "
+            f"professional illustration style, clear outlines"
+        )
+        image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=512&height=512&nologo=true&enhance=true&seed={seed}"
+        
+        return JSONResponse({
+            "description": description,
+            "image_url": image_url,
+            "status": "success",
+            "message": f"Ghost guide ready! Trace over the AI's {description}!"
+        })
+        
+    except Exception as e:
+        print(f"Error generating ghost guide: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/save-drawing")
 async def save_drawing(image: UploadFile = File(...)):
@@ -226,14 +253,14 @@ async def save_drawing(image: UploadFile = File(...)):
 @app.post("/voice-chat")
 async def voice_chat(text: str):
     """
-    Chat with AI using Groq text model
+    Chat with AI using Groq text model - Witty and concise!
     """
     try:
         chat_completion = groq_client.chat.completions.create(
             messages=[
                 {
                     "role": "system",
-                    "content": "You are a helpful, creative, and friendly AI assistant for an art drawing app. Keep responses concise (2-3 sentences max). Be encouraging and fun!"
+                    "content": "You are a witty, playful AI assistant for a drawing app. Keep responses SHORT (1-2 sentences max). Be funny, sarcastic, and encouraging. Use casual language. NO long explanations!"
                 },
                 {
                     "role": "user",
@@ -241,8 +268,8 @@ async def voice_chat(text: str):
                 }
             ],
             model="llama-3.3-70b-versatile",
-            temperature=0.7,
-            max_tokens=150
+            temperature=0.9,  # More creative/funny
+            max_tokens=50  # Force brevity!
         )
         
         response_text = chat_completion.choices[0].message.content.strip()
@@ -259,54 +286,33 @@ async def voice_chat(text: str):
 @app.post("/analyze-screen")
 async def analyze_screen(image: UploadFile = File(...)):
     """
-    Analyze screen capture with AI vision
+    Screen analysis - GEMINI VISION (ACCURATE!)
     """
     try:
-        # Read the uploaded image
+        # Read image
         image_data = await image.read()
         
-        # Open and convert image
-        pil_image = Image.open(BytesIO(image_data))
+        if not gemini_vision:
+            return JSONResponse({
+                "status": "error",
+                "response": "Vision not available. Add GEMINI_API_KEY to .env file!"
+            })
         
-        # Convert to RGB if needed
-        if pil_image.mode != 'RGB':
-            pil_image = pil_image.convert('RGB')
-        
-        # Convert to base64 for Groq API
-        buffered = BytesIO()
-        pil_image.save(buffered, format="PNG")
-        img_base64 = base64.b64encode(buffered.getvalue()).decode('utf-8')
-        
-        # Analyze with Groq vision
+        # Use GEMINI for accurate analysis
         try:
-            chat_completion = groq_client.chat.completions.create(
-                messages=[
-                    {
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "text",
-                                "text": "Describe what you see in this screenshot. What is the user doing? What's on the canvas? Keep it conversational and encouraging (2-3 sentences)."
-                            },
-                            {
-                                "type": "image_url",
-                                "image_url": {
-                                    "url": f"data:image/png;base64,{img_base64}"
-                                }
-                            }
-                        ]
-                    }
-                ],
-                model="llama-3.2-11b-vision-preview",
-                temperature=0.5,
-                max_tokens=200
-            )
+            result = gemini_vision.generate_content([
+                {
+                    "mime_type": "image/png",
+                    "data": image_data
+                },
+                "What did the person draw on this canvas? Describe in 1 sentence what you see. Be specific and accurate. Examples: 'I see a heart shape', 'I see a house with a sun', 'I see a smiley face'."
+            ])
             
-            response_text = chat_completion.choices[0].message.content.strip()
+            response_text = result.text.strip()
             
         except Exception as e:
-            print(f"Groq vision error: {e}")
-            response_text = "I can see your drawing app! Keep creating awesome art!"
+            print(f"Gemini API error: {e}")
+            response_text = "I'm having trouble analyzing the drawing right now. Keep creating!"
         
         return JSONResponse({
             "status": "success",
@@ -315,7 +321,10 @@ async def analyze_screen(image: UploadFile = File(...)):
         
     except Exception as e:
         print(f"Screen analysis error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        return JSONResponse({
+            "status": "error",
+            "response": "Analysis failed. Make sure Gemini API key is configured!"
+        })
 
 if __name__ == "__main__":
     import uvicorn

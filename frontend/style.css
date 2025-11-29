@@ -334,24 +334,24 @@ body.dark-mode #drawingCanvas {
     border-bottom: none;
 }
 
-/* Color Palette Overlay */
+/* Color Palette Overlay - LEFT SIDE */
 .color-palette {
     position: fixed;
-    right: -300px;
+    left: -300px;
     top: 50%;
     transform: translateY(-50%);
     width: 250px;
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(10px);
-    border-radius: 15px 0 0 15px;
+    border-radius: 0 15px 15px 0;
     padding: 20px;
-    box-shadow: -5px 0 20px rgba(0,0,0,0.3);
-    transition: right 0.3s ease;
+    box-shadow: 5px 0 20px rgba(0,0,0,0.3);
+    transition: left 0.3s ease;
     z-index: 1000;
 }
 
 .color-palette.show {
-    right: 0;
+    left: 0;
 }
 
 .color-option {

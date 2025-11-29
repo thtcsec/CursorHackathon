@@ -26,6 +26,7 @@
                 <button class="btn btn-danger" id="clearCanvasBtn">Clear Canvas</button>
                 <button class="btn btn-primary" id="aiAnalyzeBtn">AI Analyze</button>
                 <button class="btn btn-primary" id="aiFinishBtn">AI Finish Sketch</button>
+                <button class="btn btn-warning" id="aiGhostBtn">👻 AI Ghost Guide</button>
                 <button class="btn btn-success" id="saveBtn">Save Drawing</button>
             </div>
 
@@ -115,8 +116,8 @@
             <button class="voice-btn" id="voiceBtn">
                 <span class="mic-icon">🎤</span>
             </button>
-            <button class="voice-btn" id="screenCaptureBtn" title="Capture screen + Ask AI">
-                <span class="camera-icon">📸</span>
+            <button class="voice-btn" id="screenCaptureBtn" title="AI Analyze Drawing (Gemini Vision)">
+                <span class="camera-icon">👁️</span>
             </button>
             <div class="voice-transcript" id="voiceTranscript"></div>
             <div class="voice-response" id="voiceResponse"></div>
@@ -130,11 +131,11 @@
 
     <!-- Color Palette Overlay (shown during thumb-up gesture) -->
     <div class="color-palette" id="colorPalette">
-        <div class="color-option" data-color="0,0,255" data-rgb="(0,0,255)" style="background: rgb(0,0,255);">Red</div>
-        <div class="color-option" data-color="255,0,0" data-rgb="(255,0,0)" style="background: rgb(255,0,0);">Blue</div>
+        <div class="color-option" data-color="255,0,0" data-rgb="(255,0,0)" style="background: rgb(255,0,0);">Red</div>
+        <div class="color-option" data-color="0,0,255" data-rgb="(0,0,255)" style="background: rgb(0,0,255);">Blue</div>
         <div class="color-option" data-color="0,255,0" data-rgb="(0,255,0)" style="background: rgb(0,255,0);">Green</div>
-        <div class="color-option" data-color="0,255,255" data-rgb="(0,255,255)" style="background: rgb(0,255,255);">Yellow</div>
-        <div class="color-option" data-color="0,165,255" data-rgb="(0,165,255)" style="background: rgb(0,165,255);">Orange</div>
+        <div class="color-option" data-color="255,255,0" data-rgb="(255,255,0)" style="background: rgb(255,255,0);">Yellow</div>
+        <div class="color-option" data-color="255,165,0" data-rgb="(255,165,0)" style="background: rgb(255,165,0);">Orange</div>
         <div class="color-option" data-color="255,0,255" data-rgb="(255,0,255)" style="background: rgb(255,0,255);">Purple</div>
         <div class="color-option" data-color="255,182,193" data-rgb="(255,182,193)" style="background: rgb(255,182,193);">Pink</div>
         <div class="color-option" data-color="0,0,0" data-rgb="(0,0,0)" style="background: rgb(0,0,0); color: white;">Black</div>

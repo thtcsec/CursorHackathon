@@ -1,0 +1,15 @@
+# AirDraw Vision - Environment Variables
+
+# Groq API Key (for text chat)
+# Get it from: https://console.groq.com/
+GROQ_API_KEY=your-groq-api-key-here
+
+# Gemini API Key (for vision - REQUIRED for accurate drawing analysis!)
+# Get it from: https://aistudio.google.com/app/apikey
+GEMINI_API_KEY=your-gemini-api-key-here
+
+# IMPORTANT:
+# - GROQ_API_KEY: Used for voice chat (text-only)
+# - GEMINI_API_KEY: Used for all vision features (AI Analyze, AI Finish, Ghost Guide, Screen Analyze)
+# - Both are REQUIRED for full functionality!
+
