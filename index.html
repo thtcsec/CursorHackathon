@@ -3,11 +3,588 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cursor Hackathon</title>
+    <title>AI Gesture Drawing & Emotion Detection</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            color: #fff;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .container {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 1400px;
+            width: 100%;
+        }
+
+        .section {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .canvas-section {
+            flex: 1;
+            min-width: 600px;
+        }
+
+        .emotion-section {
+            flex: 0 0 350px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .video-container {
+            position: relative;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        #webcam {
+            width: 100%;
+            height: auto;
+            border-radius: 15px;
+            transform: scaleX(-1);
+            display: block;
+        }
+
+        #canvas {
+            border-radius: 15px;
+            background: white;
+            cursor: crosshair;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+            display: block;
+            width: 100%;
+            height: auto;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.3);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-primary {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #2196F3;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #f44336;
+            color: white;
+        }
+
+        .btn-warning {
+            background: #ff9800;
+            color: white;
+        }
+
+        .color-picker-container {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-top: 10px;
+        }
+
+        .color-option {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 3px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .color-option:hover {
+            transform: scale(1.1);
+        }
+
+        .color-option.active {
+            border-color: white;
+            box-shadow: 0 0 10px rgba(255,255,255,0.5);
+        }
+
+        .size-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .size-control input {
+            flex: 1;
+            height: 8px;
+            border-radius: 5px;
+            background: rgba(255,255,255,0.3);
+            outline: none;
+        }
+
+        .emotion-display {
+            text-align: center;
+            padding: 30px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+            margin-top: 15px;
+        }
+
+        .emotion-icon {
+            font-size: 5rem;
+            margin-bottom: 15px;
+            animation: pulse 1s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .emotion-text {
+            font-size: 1.5rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .status {
+            text-align: center;
+            padding: 10px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 10px;
+            margin-top: 10px;
+            font-size: 0.9rem;
+        }
+
+        .status.active {
+            background: rgba(76, 175, 80, 0.3);
+        }
+
+        .instructions {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        .instructions h3 {
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        .instructions ul {
+            margin-left: 20px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            font-size: 1.2rem;
+        }
+
+        @media (max-width: 768px) {
+            .canvas-section, .emotion-section {
+                min-width: 100%;
+                flex: 1;
+            }
+        }
+    </style>
 </head>
 <body>
-    <h1>Cursor Hackathon</h1>
-    <p>This is a test of the cursor hackathon</p>
+    <div class="header">
+        <h1>🎨 AI Gesture Drawing & Emotion Detection</h1>
+        <p>Draw with your hand gestures • Detect happy and sad emotions</p>
+    </div>
 
+    <div class="container">
+        <!-- Drawing Canvas Section -->
+        <div class="section canvas-section">
+            <h2 style="margin-bottom: 15px; text-align: center;">✋ Gesture Drawing Canvas</h2>
+            <canvas id="canvas" width="800" height="600"></canvas>
+            
+            <div class="controls">
+                <button class="btn btn-primary" id="startBtn">Start Camera</button>
+                <button class="btn btn-danger" id="clearBtn">Clear Canvas</button>
+                <button class="btn btn-warning" id="toggleMode">Mode: Drawing</button>
+            </div>
+
+            <div class="color-picker-container">
+                <span style="font-weight: 600;">Colors:</span>
+                <div class="color-option active" data-color="#000000" style="background: #000000;"></div>
+                <div class="color-option" data-color="#FF0000" style="background: #FF0000;"></div>
+                <div class="color-option" data-color="#00FF00" style="background: #00FF00;"></div>
+                <div class="color-option" data-color="#0000FF" style="background: #0000FF;"></div>
+                <div class="color-option" data-color="#FFFF00" style="background: #FFFF00;"></div>
+                <div class="color-option" data-color="#FF00FF" style="background: #FF00FF;"></div>
+                <div class="color-option" data-color="#00FFFF" style="background: #00FFFF;"></div>
+            </div>
+
+            <div class="size-control">
+                <span style="font-weight: 600;">Brush Size:</span>
+                <input type="range" id="brushSize" min="2" max="20" value="5">
+                <span id="sizeValue">5px</span>
+            </div>
+
+            <div class="status" id="drawingStatus">
+                👉 Point your index finger to draw
+            </div>
+
+            <div class="instructions">
+                <h3>📝 Instructions:</h3>
+                <ul>
+                    <li>✌️ Show your <strong>index finger</strong> to draw</li>
+                    <li>✊ Make a <strong>fist</strong> to stop drawing</li>
+                    <li>🎨 Click colors to change brush color</li>
+                    <li>📏 Use slider to adjust brush size</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Emotion Detection Section -->
+        <div class="section emotion-section">
+            <h2 style="margin-bottom: 15px; text-align: center;">😊 Emotion Detection</h2>
+            
+            <div class="video-container">
+                <video id="webcam" autoplay playsinline></video>
+            </div>
+
+            <div class="emotion-display">
+                <div class="emotion-icon" id="emotionIcon">😐</div>
+                <div class="emotion-text" id="emotionText">Neutral</div>
+            </div>
+
+            <div class="status" id="emotionStatus">
+                Camera not started
+            </div>
+
+            <div class="instructions">
+                <h3>😊 How it works:</h3>
+                <ul>
+                    <li>😃 <strong>Smile</strong> to show happiness</li>
+                    <li>😢 <strong>Frown</strong> to show sadness</li>
+                    <li>🤖 AI detects your facial expressions in real-time</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load MediaPipe and TensorFlow.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+
+    <script>
+        // Canvas and drawing setup
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const video = document.getElementById('webcam');
+        
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+        let currentColor = '#000000';
+        let brushSize = 5;
+        let isErasing = false;
+        let cameraStarted = false;
+
+        // Initialize canvas
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        // MediaPipe Hands setup
+        let hands;
+        let faceMesh;
+
+        async function initializeMediaPipe() {
+            // Initialize Hands
+            hands = new Hands({
+                locateFile: (file) => {
+                    return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+                }
+            });
+
+            hands.setOptions({
+                maxNumHands: 1,
+                modelComplexity: 1,
+                minDetectionConfidence: 0.7,
+                minTrackingConfidence: 0.5
+            });
+
+            hands.onResults(onHandsResults);
+
+            // Initialize Face Mesh
+            faceMesh = new FaceMesh({
+                locateFile: (file) => {
+                    return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
+                }
+            });
+
+            faceMesh.setOptions({
+                maxNumFaces: 1,
+                refineLandmarks: true,
+                minDetectionConfidence: 0.7,
+                minTrackingConfidence: 0.5
+            });
+
+            faceMesh.onResults(onFaceMeshResults);
+        }
+
+        // Hand gesture detection and drawing
+        function onHandsResults(results) {
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                const landmarks = results.multiHandLandmarks[0];
+                
+                // Get index finger tip (landmark 8)
+                const indexTip = landmarks[8];
+                
+                // Get thumb tip (landmark 4) and index finger base (landmark 5)
+                const thumbTip = landmarks[4];
+                const indexBase = landmarks[5];
+                
+                // Calculate if hand is making a fist (index finger folded)
+                const indexMCP = landmarks[5];
+                const indexPIP = landmarks[6];
+                const indexDIP = landmarks[7];
+                
+                // Check if finger is extended (drawing gesture)
+                const isFingerExtended = indexTip.y < indexDIP.y && indexDIP.y < indexPIP.y;
+                
+                // Map coordinates to canvas
+                const x = (1 - indexTip.x) * canvas.width; // Mirror the x coordinate
+                const y = indexTip.y * canvas.height;
+
+                if (isFingerExtended) {
+                    if (!isDrawing) {
+                        isDrawing = true;
+                        lastX = x;
+                        lastY = y;
+                        document.getElementById('drawingStatus').classList.add('active');
+                        document.getElementById('drawingStatus').textContent = '✏️ Drawing...';
+                    } else {
+                        // Draw line
+                        ctx.strokeStyle = isErasing ? 'white' : currentColor;
+                        ctx.lineWidth = brushSize;
+                        ctx.beginPath();
+                        ctx.moveTo(lastX, lastY);
+                        ctx.lineTo(x, y);
+                        ctx.stroke();
+                        
+                        lastX = x;
+                        lastY = y;
+                    }
+                } else {
+                    if (isDrawing) {
+                        isDrawing = false;
+                        document.getElementById('drawingStatus').classList.remove('active');
+                        document.getElementById('drawingStatus').textContent = '👉 Point your index finger to draw';
+                    }
+                }
+            } else {
+                if (isDrawing) {
+                    isDrawing = false;
+                    document.getElementById('drawingStatus').classList.remove('active');
+                    document.getElementById('drawingStatus').textContent = '👉 Point your index finger to draw';
+                }
+            }
+        }
+
+        // Facial expression detection
+        function onFaceMeshResults(results) {
+            if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+                const landmarks = results.multiFaceLandmarks[0];
+                
+                // Detect smile or frown based on mouth landmarks
+                // Upper lip: 13, Lower lip: 14
+                // Left mouth: 61, Right mouth: 291
+                const upperLip = landmarks[13];
+                const lowerLip = landmarks[14];
+                const leftMouth = landmarks[61];
+                const rightMouth = landmarks[291];
+                
+                // Calculate mouth opening (vertical distance)
+                const mouthHeight = Math.abs(lowerLip.y - upperLip.y);
+                
+                // Calculate mouth width
+                const mouthWidth = Math.abs(rightMouth.x - leftMouth.x);
+                
+                // Calculate smile ratio
+                const smileRatio = mouthWidth / mouthHeight;
+                
+                // Detect eyebrows for additional emotion cues
+                const leftEyebrow = landmarks[70];
+                const rightEyebrow = landmarks[300];
+                const noseBridge = landmarks[6];
+                
+                const eyebrowHeight = ((leftEyebrow.y + rightEyebrow.y) / 2);
+                const eyebrowDistance = noseBridge.y - eyebrowHeight;
+                
+                // Determine emotion
+                let emotion = 'Neutral';
+                let icon = '😐';
+                
+                if (smileRatio > 4.5 && mouthHeight > 0.02) {
+                    emotion = 'Happy';
+                    icon = '😊';
+                } else if (smileRatio > 5.5) {
+                    emotion = 'Very Happy';
+                    icon = '😄';
+                } else if (smileRatio < 3.5 && eyebrowDistance < 0.08) {
+                    emotion = 'Sad';
+                    icon = '😢';
+                } else if (eyebrowDistance < 0.06) {
+                    emotion = 'Very Sad';
+                    icon = '😭';
+                }
+                
+                document.getElementById('emotionIcon').textContent = icon;
+                document.getElementById('emotionText').textContent = emotion;
+                document.getElementById('emotionStatus').classList.add('active');
+                document.getElementById('emotionStatus').textContent = '✅ Detecting emotions...';
+            }
+        }
+
+        // Camera processing loop
+        async function processCamera() {
+            if (cameraStarted) {
+                await hands.send({image: video});
+                await faceMesh.send({image: video});
+                requestAnimationFrame(processCamera);
+            }
+        }
+
+        // Start camera
+        document.getElementById('startBtn').addEventListener('click', async () => {
+            if (!cameraStarted) {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ 
+                        video: { 
+                            width: 640, 
+                            height: 480 
+                        } 
+                    });
+                    video.srcObject = stream;
+                    
+                    await initializeMediaPipe();
+                    
+                    video.addEventListener('loadeddata', () => {
+                        cameraStarted = true;
+                        processCamera();
+                        document.getElementById('startBtn').textContent = '✅ Camera Active';
+                        document.getElementById('startBtn').classList.remove('btn-primary');
+                        document.getElementById('startBtn').classList.add('btn-secondary');
+                    });
+                } catch (error) {
+                    alert('Error accessing camera: ' + error.message);
+                    console.error('Camera error:', error);
+                }
+            }
+        });
+
+        // Clear canvas
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        });
+
+        // Toggle erasing mode
+        document.getElementById('toggleMode').addEventListener('click', () => {
+            isErasing = !isErasing;
+            const btn = document.getElementById('toggleMode');
+            if (isErasing) {
+                btn.textContent = 'Mode: Erasing';
+                btn.classList.remove('btn-warning');
+                btn.classList.add('btn-secondary');
+            } else {
+                btn.textContent = 'Mode: Drawing';
+                btn.classList.remove('btn-secondary');
+                btn.classList.add('btn-warning');
+            }
+        });
+
+        // Color picker
+        document.querySelectorAll('.color-option').forEach(option => {
+            option.addEventListener('click', () => {
+                document.querySelectorAll('.color-option').forEach(opt => opt.classList.remove('active'));
+                option.classList.add('active');
+                currentColor = option.dataset.color;
+                isErasing = false;
+                document.getElementById('toggleMode').textContent = 'Mode: Drawing';
+                document.getElementById('toggleMode').classList.remove('btn-secondary');
+                document.getElementById('toggleMode').classList.add('btn-warning');
+            });
+        });
+
+        // Brush size
+        document.getElementById('brushSize').addEventListener('input', (e) => {
+            brushSize = e.target.value;
+            document.getElementById('sizeValue').textContent = brushSize + 'px';
+        });
+
+        // Initialize on load
+        console.log('AI Gesture Drawing & Emotion Detection ready!');
+    </script>
 </body>
-</html> 
+</html>
